@@ -9,11 +9,6 @@ namespace FieldOfView
     {
         [SerializeField] private FieldOfViewController FovController;
         [SerializeField] private FovMeshBuilder MeshBuilder;
-        
-        private void Awake()
-        {
-            
-        }
 
         public void Initialize(float range, float sideAngleRadian, float widthLength)
         {

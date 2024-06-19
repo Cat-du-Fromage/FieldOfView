@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Collections;
@@ -26,9 +27,13 @@ namespace FieldOfView
         private void Awake()
         {
             FieldOfView = Instantiate(FieldOfViewPrefab, transform.position, transform.rotation, transform);
+        }
+
+        private void Start()
+        {
             FieldOfView.Initialize(Range, SideAngleDegrees * math.TORADIANS, WidthLength);
         }
-        
+
         public void OnDrawGizmos()
         {
             if (!Application.isPlaying || FormationWidth <= 1) return;
