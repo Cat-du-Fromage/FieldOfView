@@ -16,6 +16,8 @@ namespace FieldOfView
         
         [SerializeField] private float Range;
         [SerializeField] private float SideAngleDegrees;
+
+        [SerializeField, Range(1,4)] private int ResolutionMesh = 1;
         
         // Formation Data
         [Min(1)] public int FormationWidth = 6;
@@ -31,7 +33,7 @@ namespace FieldOfView
 
         private void Start()
         {
-            FieldOfView.Initialize(Range, SideAngleDegrees * math.TORADIANS, WidthLength);
+            FieldOfView.Initialize(Range, SideAngleDegrees * math.TORADIANS, WidthLength, ResolutionMesh);
         }
 
         public void OnDrawGizmos()

@@ -353,9 +353,9 @@ MonoBehaviour:
     type: 3}
   FieldOfView: {fileID: 0}
   Range: 4
-  SideAngleDegrees: 60
+  SideAngleDegrees: 45
   FormationWidth: 6
-  SpaceBetweenUnits: 0.2
+  SpaceBetweenUnits: 0
   UnitSize: {x: 1, y: 1}
 --- !u!1 &330585543
 GameObject:

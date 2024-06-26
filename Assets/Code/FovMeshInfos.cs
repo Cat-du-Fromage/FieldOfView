@@ -13,14 +13,25 @@ namespace FieldOfView
         public int BorderVertexCount, ArcVertexCount, FrontLineVertexCount, VerticesCount;
 
         public int BorderTrianglesCount => BorderQuadCount * 2;
+        public int ArcTrianglesCount => ArcQuadCount * 2;
+        public int FrontTrianglesCount => FrontLineQuadCount * 2;
+        
+        public int BorderTrianglesIndicesCount => BorderTrianglesCount * 3;
+        public int ArcTrianglesIndicesCount => ArcTrianglesCount * 3;
+        public int FrontTrianglesIndicesCount => FrontTrianglesCount * 3;
         
         public IndexFormat IndexFormat => VerticesCount * 2 < 65536 ? IndexFormat.UInt16 : IndexFormat.UInt32;
 	
-        public FovMeshInfos(float range, float sideAngleRadian, float widthLength)
+        public FovMeshInfos(float range, float sideAngleRadian, float widthLength, int resolution = 1)
         {
             BorderQuadCount    = (int)math.round(range);
             ArcQuadCount       = (int)math.max(math.round((math.PIHALF - sideAngleRadian) * range), 0);
             FrontLineQuadCount = (int)math.max(1, math.round(widthLength));
+
+            BorderQuadCount *= resolution;
+            ArcQuadCount *= resolution;
+            FrontLineQuadCount *= resolution;
+            
             QuadCount = FrontLineQuadCount + (BorderQuadCount + ArcQuadCount) * 2;
             
             BorderVertexCount = (BorderQuadCount + 1) * 2;

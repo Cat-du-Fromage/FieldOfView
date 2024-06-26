@@ -10,10 +10,10 @@ namespace FieldOfView
         [SerializeField] private FieldOfViewController FovController;
         [SerializeField] private FovMeshBuilder MeshBuilder;
 
-        public void Initialize(float range, float sideAngleRadian, float widthLength)
+        public void Initialize(float range, float sideAngleRadian, float widthLength, int resolution = 1)
         {
             MeshBuilder = TryGetComponent(out FovMeshBuilder meshBuilder) ? meshBuilder : gameObject.AddComponent<FovMeshBuilder>();
-            MeshBuilder.Initialize(range, sideAngleRadian, widthLength);
+            MeshBuilder.Initialize(range, sideAngleRadian, widthLength, resolution);
         }
     }
 }
