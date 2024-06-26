@@ -28,7 +28,7 @@ namespace FieldOfView
         
         private void Awake()
         {
-            FieldOfView = Instantiate(FieldOfViewPrefab, transform.position, transform.rotation, transform);
+            FieldOfView = Instantiate(FieldOfViewPrefab, transform.position + Vector3.down, transform.rotation, transform);
         }
 
         private void Start()

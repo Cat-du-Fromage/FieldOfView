@@ -61,5 +61,11 @@ namespace FieldOfView
         {
             return new float2(-direction.y, direction.x);
         }
+        
+        public static float2 Rotate(this float2 coords, float angleRadian) 
+        {
+            math.sincos(angleRadian, out float sinA, out float cosA);
+            return new float2(cosA * coords.x - sinA * coords.y, sinA * coords.x + cosA * coords.y);
+        }
     }
 }

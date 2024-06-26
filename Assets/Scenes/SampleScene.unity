@@ -131,7 +131,7 @@ GameObject:
   - component: {fileID: 126810754}
   - component: {fileID: 126810753}
   - component: {fileID: 126810752}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Plane
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -352,9 +352,10 @@ MonoBehaviour:
   FieldOfViewPrefab: {fileID: 4831575149161432438, guid: 927a341f720d7444b8e5ee21cd06b468,
     type: 3}
   FieldOfView: {fileID: 0}
-  Range: 4
-  SideAngleDegrees: 45
-  FormationWidth: 6
+  Range: 8
+  SideAngleDegrees: 60
+  ResolutionMesh: 1
+  FormationWidth: 10
   SpaceBetweenUnits: 0
   UnitSize: {x: 1, y: 1}
 --- !u!1 &330585543
