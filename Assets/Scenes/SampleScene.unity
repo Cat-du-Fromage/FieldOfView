@@ -354,7 +354,7 @@ MonoBehaviour:
   FieldOfView: {fileID: 0}
   Range: 8
   SideAngleDegrees: 60
-  ResolutionMesh: 1
+  ResolutionMesh: 2
   FormationWidth: 10
   SpaceBetweenUnits: 0
   UnitSize: {x: 1, y: 1}

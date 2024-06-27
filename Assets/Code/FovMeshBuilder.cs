@@ -1,12 +1,17 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
+using Unity.Jobs;
+using Unity.Jobs.LowLevel.Unsafe;
 using Unity.Mathematics;
 using UnityEditor;
 using UnityEditor.Rendering;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Serialization;
 using static Unity.Mathematics.math;
 using static Unity.Collections.Allocator;
 using static Unity.Collections.NativeArrayOptions;
@@ -17,34 +22,43 @@ namespace FieldOfView
 {
     public partial class FovMeshBuilder : MonoBehaviour
     {
+        const int ORIGIN_HEIGHT = 32;
+        const int RAY_DISTANCE = 64;
+        
+        const int TERRAIN_LAYER = 1 << 8;
+        const float GROUND_OFFSET = 0.5f;
+        
         public const float Thickness = 0.2f;
 
         [SerializeField] private float Range;
         [SerializeField] private float WidthLength;
         
-        [SerializeField] private float SideAngleRadian;
+        [SerializeField] private float OuterSideAngleRadian;
         [SerializeField] private float InnerSideAngleRadian;
         
         public MeshFilter MeshFilter;
         private FovMeshInfos meshInfos;
         
-        private float3[] meshVertices = Array.Empty<float3>();
+        private NativeArray<float3> meshVertices;
 
     //╓────────────────────────────────────────────────────────────────────────────────────────────────────────────────╖
     //║ ◈◈◈◈◈◈ Accessors ◈◈◈◈◈◈                                                                                        ║
     //╙────────────────────────────────────────────────────────────────────────────────────────────────────────────────╜
+
+        public float3 Position => transform.position;
+        public float3 Forward => transform.forward;
     
         //┌────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
         //│  ◇◇◇◇◇◇ BORDER ◇◇◇◇◇◇                                                                                      │
         //└────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
         // Directions (Left border)
-        public float2 BorderDirection  => new (math.cos(PI - SideAngleRadian), math.sin(PI - SideAngleRadian));
+        public float2 BorderDirection  => new (math.cos(PI - OuterSideAngleRadian), math.sin(PI - OuterSideAngleRadian));
         
         // Start Positions
         public float2 OuterBorderStart => new (-WidthLength / 2, 0); 
         public float2 InnerBorderStart => OuterBorderStart + new float2(BorderDirection.y, -BorderDirection.x) * Thickness;
         
-        //Steps
+        // Steps
         public float BorderOuterStep => Range / meshInfos.BorderQuadCount;
         public float BorderInnerStep => math.distance(InnerBorderStart, InnerBorderStart + BorderDirection * (Range - Thickness)) / meshInfos.BorderQuadCount;
         
@@ -52,12 +66,12 @@ namespace FieldOfView
         //│  ◇◇◇◇◇◇ ARC ◇◇◇◇◇◇                                                                                         │
         //└────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
         // Start Angles (Radian)
-        public float OuterArcStart => PI - SideAngleRadian;
-        public float InnerArcStart => PI - InnerSideAngleRadian;
+        public float OuterArcStart => math.PI - OuterSideAngleRadian;
+        public float InnerArcStart => math.PI - InnerSideAngleRadian;
         
         // Steps
-        public float OuterArcAngleStep => (PIHALF - SideAngleRadian) / meshInfos.ArcQuadCount;
-        public float InnerArcAngleStep => (PIHALF - InnerSideAngleRadian) / meshInfos.ArcQuadCount;
+        public float OuterArcAngleStep => (math.PIHALF - OuterSideAngleRadian) / meshInfos.ArcQuadCount;
+        public float InnerArcAngleStep => (math.PIHALF - InnerSideAngleRadian) / meshInfos.ArcQuadCount;
         
         //┌────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
         //│  ◇◇◇◇◇◇ FRONT ◇◇◇◇◇◇                                                                                       │
@@ -74,16 +88,20 @@ namespace FieldOfView
             MeshFilter = GetComponent<MeshFilter>();
         }
 
+        private void OnDestroy()
+        {
+            if (meshVertices.IsCreated) meshVertices.Dispose();
+        }
+
         public void Initialize(float range, float sideAngleRadian, float widthLength, int resolution = 1)
         {
             this.Range = range;
-            this.SideAngleRadian = sideAngleRadian;
+            this.OuterSideAngleRadian = sideAngleRadian;
             this.WidthLength = widthLength;
             
-            //float2 leftInnerEnd = InnerBorderStart + LeftDirection * (range - Thickness);
-            //float2 leftStartToInnerEnd = math.normalize(leftInnerEnd - OuterBorderStart);
-            float2 leftStartToInnerEnd = normalize(mad(BorderDirection, range - Thickness, InnerBorderStart) - OuterBorderStart);
-            InnerSideAngleRadian = PI - math.atan2(leftStartToInnerEnd.y, leftStartToInnerEnd.x);
+            float2 borderInnerEnd = InnerBorderStart + BorderDirection * (range - Thickness);
+            float2 borderOuterStartToInnerEnd = math.normalize(borderInnerEnd - OuterBorderStart);
+            InnerSideAngleRadian = math.PI - math.atan2(borderOuterStartToInnerEnd.y, borderOuterStartToInnerEnd.x);
             
             meshInfos = new FovMeshInfos(range, sideAngleRadian, widthLength, resolution);
             
@@ -95,12 +113,12 @@ namespace FieldOfView
             Mesh fovMesh = MeshFilter.mesh;
             fovMesh.Clear();
 
-            meshVertices = new float3[meshInfos.VerticesCount];
-            //NativeArray<float3> vertices = new (meshInfos.VerticesCount, Temp, UninitializedMemory);
+            meshVertices = new NativeArray<float3>(meshInfos.VerticesCount, Persistent, UninitializedMemory);
+            //meshVertices = new float3[meshInfos.VerticesCount];
             BuildVertices(meshVertices);
             
             NativeArray<ushort> triangleIndices = new (meshInfos.TriangleIndicesCount, Temp, UninitializedMemory);
-            BuildTriangleIndices(triangleIndices.AsSpan());
+            BuildTriangleIndices(triangleIndices);
             
             // Set Parameters Data
             fovMesh.SetVertexBufferParams(meshInfos.VerticesCount, Utils.VertexAttributeDescriptors);
@@ -118,7 +136,7 @@ namespace FieldOfView
             fovMesh.RecalculateBounds();
         }
         
-        private void BuildTriangleIndices(Span<ushort> triangleIndices)
+        private void BuildTriangleIndices(NativeArray<ushort> triangleIndices)
         {
             for (int i = 0; i < meshInfos.TrianglesCount; i++)
             {
@@ -132,7 +150,7 @@ namespace FieldOfView
             }
         }
         
-        public void BuildVertices(Span<float3> vertices)
+        public void BuildVertices(NativeArray<float3> vertices)
         {
             SetBorderVertices(vertices);
             SetArcVertices(vertices);
@@ -141,46 +159,63 @@ namespace FieldOfView
             SetVerticesHeight(vertices);
         }
 
-        private void SetVerticesHeight(Span<float3> vertices)
+        private void AdvancedSetVerticesHeight(NativeArray<float3> vertices)
         {
-            const int terrainLayerIndex = 8;
-            const float groundOffset = 0.5f;
-            const float heightOffset = 8;
-            const float maxDistance = 16;
+            QueryParameters queryParams = new QueryParameters(TERRAIN_LAYER);
             
-            /*
-            NativeArray<float3> tmpVertices = new (vertices.ToArray(), Temp);
-            transform.TransformPoints(tmpVertices.Reinterpret<Vector3>().AsSpan());
-            float3 upOffset = up() * heightOffset;
+            using NativeArray<RaycastHit> results = new (vertices.Length, TempJob, UninitializedMemory);
+            RaycastHitsJob(results, vertices,queryParams).Complete();
+
+            NativeSlice<float> pointsSlice = results.Slice(0).SliceWithStride<float3>(0).SliceWithStride<float>(4);
+            NativeSlice<float> heights = vertices.Slice(0).SliceWithStride<float>(4);
+            
+            heights.CopyFrom(pointsSlice);
+            for (int i = 0; i < heights.Length; i++)
+            {
+                heights[i] += GROUND_OFFSET;
+            }
+        }
+
+        private void SetVerticesHeight(NativeArray<float3> vertices)
+        {
+            NativeSlice<float> heights = vertices.Slice(0).SliceWithStride<float>(4);
+            
+            Span<Vector3> tmpVertices = stackalloc Vector3[vertices.Length];
+            transform.TransformPoints(vertices.Reinterpret<Vector3>().AsReadOnlySpan(), tmpVertices);
+            
+            Vector3 upOffset = Vector3.up * ORIGIN_HEIGHT;
             for (int i = 0; i < tmpVertices.Length; i++)
             {
                 Ray ray = new (tmpVertices[i] + upOffset, Vector3.down);
-                if (!Physics.Raycast(ray, out RaycastHit hit, maxDistance, 1 << terrainLayerIndex)) continue;
-                vertices[i].y = hit.point.y + groundOffset;
+                if (!Physics.Raycast(ray, out RaycastHit hit, RAY_DISTANCE, TERRAIN_LAYER)) continue;
+                heights[i] = hit.point.y + GROUND_OFFSET;
+                //vertices[i] = new float3(vertices[i].x, hit.point.y + groundOffset, vertices[i].z);
             }
-            */
+            
+            /*
             float3 transformForward = transform.forward;
             float3 transformPosition = transform.position;
             for (int i = 0; i < vertices.Length; i++)
             {
                 float2 origin2D = vertices[i].xz + transformPosition.xz;
-                //float angle       = acos(transformForward.z);
-                //float signValue   = sign(-transformForward.x);
-                //acos(dot(forward().xz, transformForward.xz)) * sign(forward().x * transformForward.y - forward().y * transformForward.x);;
-                float signedAngle = acos(transformForward.z) * sign(-transformForward.x);
+                float angle     = acos(transformForward.z);//acos(dot(forward().xz, transformForward.xz)); forward.xy = (0,1)
+                float signValue = sign(-transformForward.x);//sign(forward().x * transformForward.y - forward().y * transformForward.x);
+                float signedAngle = angle * signValue;
                 math.sincos(signedAngle, out float sinA, out float cosA);
-                
+
                 //origin2D = float2(cosA * origin2D.x - sinA * origin2D.y, sinA * origin2D.x + cosA * origin2D.y);
                 float2x2 rotationMatrix = new float2x2(cosA, -sinA, sinA,  cosA);
                 origin2D = mul(rotationMatrix, origin2D);
 
                 Ray ray = new (new Vector3(origin2D.x, heightOffset, origin2D.y), Vector3.down);
                 if (!Physics.Raycast(ray, out RaycastHit hit, maxDistance, 1 << terrainLayerIndex)) continue;
-                vertices[i].y = hit.point.y + groundOffset;
+                vertices[i] = new float3(vertices[i].x, hit.point.y + groundOffset, vertices[i].z);
+                //vertices[i].y = hit.point.y + groundOffset;
             }
+            */
         }
         
-        public void SetBorderVertices(Span<float3> vertices)
+        public void SetBorderVertices(NativeArray<float3> vertices)
         {
             int halfVertices = meshInfos.BorderVertexCount / 2;
             for (int i = 0; i < halfVertices; i++)
@@ -202,7 +237,7 @@ namespace FieldOfView
             }
         }
 
-        private void SetFrontVertices(Span<float3> vertices)
+        private void SetFrontVertices(NativeArray<float3> vertices)
         {
             int startIndex = meshInfos.BorderVertexCount + meshInfos.ArcVertexCount;
             int halfVertices = meshInfos.FrontLineVertexCount / 2;
@@ -215,7 +250,7 @@ namespace FieldOfView
             }
         }
         
-        private void SetArcVertices(Span<float3> vertices)
+        private void SetArcVertices(NativeArray<float3> vertices)
         {
             int startIndex = meshInfos.BorderVertexCount;
             int halfVertices = meshInfos.ArcVertexCount / 2;
@@ -242,6 +277,61 @@ namespace FieldOfView
                 vertices[outerRightIndex] = outerLeft - 2 * math.project(outerLeft, math.right());
             }
         }
+        
+        public JobHandle RaycastHitsJob(NativeArray<RaycastHit> results, NativeArray<float3> positions, QueryParameters queryParams, JobHandle dependency = default)
+        {
+            NativeArray<RaycastCommand> commands = new (positions.Length, TempJob, UninitializedMemory);
+            JRaycastsCommands job = new JRaycastsCommands
+            {
+                OriginHeight = ORIGIN_HEIGHT,
+                RayDistance = RAY_DISTANCE,
+                QueryParams = queryParams,
+                Position = Position,
+                Forward = Forward,
+                Vertices = positions,
+                Commands = commands
+            };
+            JobHandle rayCastCommandJh = job.ScheduleParallel(commands.Length, JobsUtility.JobWorkerCount - 1, dependency);
+            JobHandle rayCastHitJh = RaycastCommand.ScheduleBatch(commands, results, 1, 1, rayCastCommandJh);
+            commands.Dispose(rayCastHitJh);
+            return rayCastHitJh;
+        }
+        
+//╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+//║                                                ◆◆◆◆◆◆ JOBS ◆◆◆◆◆◆                                                  ║
+//╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Low)]
+        public struct JRaycastsCommands : IJobFor
+        {
+            [ReadOnly] public int OriginHeight;
+            [ReadOnly] public int RayDistance;
+            [ReadOnly] public QueryParameters QueryParams;
+            
+            [ReadOnly] public float3 Position;
+            [ReadOnly] public float3 Forward;
+            
+            [ReadOnly, NativeDisableParallelForRestriction, NativeDisableContainerSafetyRestriction] 
+            public NativeArray<float3> Vertices;
+            [WriteOnly, NativeDisableParallelForRestriction, NativeDisableContainerSafetyRestriction]
+            public NativeArray<RaycastCommand> Commands;
+            
+            public void Execute(int index)
+            {
+                float2 origin2D = Vertices[index].xz + Position.xz;
+                float angle     = math.acos(Forward.z);// acos(dot(forward().xz, transformForward.xz)); ( forward.xy = (0,1) )
+                float signValue = math.sign(-Forward.x);// sign(forward().x * transformForward.y - forward().y * transformForward.x);
+                float signedAngle = angle * signValue;
+                math.sincos(signedAngle, out float sinA, out float cosA);
+                
+                //origin2D = float2(cosA * origin2D.x - sinA * origin2D.y, sinA * origin2D.x + cosA * origin2D.y);
+                float2x2 rotationMatrix = new float2x2(cosA, -sinA, sinA,  cosA);
+                origin2D = mul(rotationMatrix, origin2D);
+
+                Vector3 origin3D = new Vector3(origin2D.x, OriginHeight, origin2D.y);
+                Commands[index] = new RaycastCommand(origin3D, Vector3.down, QueryParams, RayDistance);
+            }
+        }
     }
     
 #if UNITY_EDITOR
@@ -249,23 +339,15 @@ namespace FieldOfView
     {
         public bool DebugIndicesNumber = false;
         
-        
-        
         private void OnDrawGizmos()
         {
-            if (!Application.isPlaying || meshVertices == null || meshVertices.Length == 0) return;
-            
-            //Gizmos.color = Color.yellow;
-            //float2 normalLeftCw = new float2(LeftDirection.y, -LeftDirection.x) * Thickness;
-            //float2 leftInnerEnd = OuterBorderStart + LeftDirection * (Range - Thickness);
-            //Gizmos.DrawSphere(leftInnerEnd.x0y(), 0.05f);
-            //Gizmos.DrawSphere((leftInnerEnd+normalLeftCw).x0y(), 0.05f);
+            if (!Application.isPlaying || !meshVertices.IsCreated || meshVertices.Length == 0) return;
 
-            NativeArray<float3> debugVertices = new (meshVertices, Temp);
-            transform.TransformPoints(debugVertices.Reinterpret<Vector3>().AsSpan());
+            Span<Vector3> debugVertices = stackalloc Vector3[meshVertices.Length];
+            transform.TransformPoints(meshVertices.Reinterpret<Vector3>().AsReadOnlySpan(), debugVertices);
             
             Gizmos.color = Color.magenta;
-            float3 offset = up() + right() * 0.075f;
+            Vector3 offset = Vector3.up + Vector3.right * 0.075f;
             for (int i = 0; i < meshVertices.Length; i++)
             {
                 Gizmos.DrawWireSphere(debugVertices[i], 0.05f);

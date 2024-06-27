@@ -15,15 +15,15 @@ namespace FieldOfView
 
         // Triangles
         public int BorderTrianglesCount => BorderQuadCount * 2;
-        public int ArcTrianglesCount => ArcQuadCount * 2;
-        public int FrontTrianglesCount => FrontLineQuadCount * 2;
-        public int TrianglesCount => QuadCount * 2;
+        public int ArcTrianglesCount    => ArcQuadCount * 2;
+        public int FrontTrianglesCount  => FrontLineQuadCount * 2;
+        public int TrianglesCount       => QuadCount * 2;
         
         // Triangles Indices
         public int BorderTrianglesIndicesCount => BorderTrianglesCount * 3;
-        public int ArcTrianglesIndicesCount => ArcTrianglesCount * 3;
-        public int FrontTrianglesIndicesCount => FrontTrianglesCount * 3;
-        public int TriangleIndicesCount => TrianglesCount * 3;
+        public int ArcTrianglesIndicesCount    => ArcTrianglesCount * 3;
+        public int FrontTrianglesIndicesCount  => FrontTrianglesCount * 3;
+        public int TriangleIndicesCount        => TrianglesCount * 3;
         
         public IndexFormat IndexFormat => VerticesCount * 2 < 65536 ? IndexFormat.UInt16 : IndexFormat.UInt32;
 	
