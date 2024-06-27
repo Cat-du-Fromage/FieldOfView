@@ -8,37 +8,44 @@ using UnityEngine;
 namespace FieldOfView
 {
 
-    public class FieldOfViewController : MonoBehaviour
+    public partial class FieldOfViewController : MonoBehaviour
     {
-        [SerializeField] private FieldOfViewComponent FieldOfViewPrefab;
-        
-        [SerializeField] private FieldOfViewComponent FieldOfView;
+        [SerializeField] private GameObject FieldOfViewPrefab;
         
         [SerializeField] private float Range;
         [SerializeField] private float SideAngleDegrees;
-
-        [SerializeField, Range(1,4)] private int ResolutionMesh = 1;
         
         // Formation Data
-        [Min(1)] public int FormationWidth = 6;
-        [Min(0)] public float SpaceBetweenUnits = 0.2f;
-        [Min(1)] public Vector2 UnitSize = Vector2.one;
+        [SerializeField, Min(1)] private int FormationWidth = 6;
+        [SerializeField, Min(0)] private float SpaceBetweenUnits = 0f;
+        [SerializeField, Min(1)] private Vector2 UnitSize = Vector2.one;
+
+        [field:SerializeField] public FieldOfViewComponent FieldOfView { get; private set; }
+
         private Vector2 DistanceUnitToUnit => UnitSize + new Vector2(SpaceBetweenUnits, SpaceBetweenUnits);
         private float WidthLength => (FormationWidth - 1) * (UnitSize.x + SpaceBetweenUnits);
         
         private void Awake()
         {
-            FieldOfView = Instantiate(FieldOfViewPrefab, transform.position + Vector3.down, transform.rotation, transform);
+            FieldOfView = Instantiate(FieldOfViewPrefab, transform).GetComponent<FieldOfViewComponent>();
+            FieldOfView.transform.localPosition += Vector3.down;
         }
 
         private void Start()
         {
             FieldOfView.Initialize(Range, SideAngleDegrees * math.TORADIANS, WidthLength, ResolutionMesh);
         }
+    }
 
+    
+#if UNITY_EDITOR
+    public partial class FieldOfViewController : MonoBehaviour
+    {
+        [SerializeField, Range(1,4)] private int ResolutionMesh = 1;
+        
         public void OnDrawGizmos()
         {
-            if (!Application.isPlaying || FormationWidth <= 1) return;
+            if (FormationWidth < 2) return;
             DrawGhostUnits(Color.green,Color.white);
         }
         
@@ -55,4 +62,5 @@ namespace FieldOfView
             }
         }
     }
+#endif
 }
