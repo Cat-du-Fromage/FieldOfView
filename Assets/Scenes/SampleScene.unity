@@ -351,13 +351,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   FieldOfViewPrefab: {fileID: 73436391875876817, guid: 927a341f720d7444b8e5ee21cd06b468,
     type: 3}
+  ResolutionMesh: 1
   Range: 8
   SideAngleDegrees: 60
   FormationWidth: 7
   SpaceBetweenUnits: 0
-  UnitSize: {x: 1, y: 1}
+  UnitSize: 1
   <FieldOfView>k__BackingField: {fileID: 0}
-  ResolutionMesh: 2
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0

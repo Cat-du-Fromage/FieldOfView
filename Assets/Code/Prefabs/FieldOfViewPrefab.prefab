@@ -11,8 +11,8 @@ GameObject:
   - component: {fileID: 7309981982913061427}
   - component: {fileID: 584101287115054155}
   - component: {fileID: 6088093287301003344}
-  - component: {fileID: 7270508421588890928}
   - component: {fileID: 4831575149161432438}
+  - component: {fileID: 2463343108727324311}
   m_Layer: 0
   m_Name: FieldOfViewPrefab
   m_TagString: Untagged
@@ -87,28 +87,6 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!64 &7270508421588890928
-MeshCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 73436391875876817}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 0
-  serializedVersion: 5
-  m_Convex: 0
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!114 &4831575149161432438
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -121,5 +99,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 223d27187d7f8eb49a7ccc3433529ed1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  FovController: {fileID: 0}
   MeshBuilder: {fileID: 0}
+--- !u!114 &2463343108727324311
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 73436391875876817}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0fe02bbe975702f48987e42ce0b9dde6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Range: 0
+  WidthLength: 0
+  OuterSideAngleRadian: 0
+  InnerSideAngleRadian: 0
+  MeshFilter: {fileID: 0}
+  DebugIndicesNumber: 0

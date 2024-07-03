@@ -1,6 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -8,33 +6,34 @@ using Unity.Jobs;
 using Unity.Jobs.LowLevel.Unsafe;
 using Unity.Mathematics;
 using UnityEditor;
-using UnityEditor.Rendering;
 using UnityEngine;
 using UnityEngine.Rendering;
-using UnityEngine.Serialization;
+
 using static Unity.Mathematics.math;
 using static Unity.Collections.Allocator;
 using static Unity.Collections.NativeArrayOptions;
+
 using float2 = Unity.Mathematics.float2;
 using quaternion = Unity.Mathematics.quaternion;
 
 namespace FieldOfView
 {
-    public partial class FovMeshBuilder : MonoBehaviour
+    [RequireComponent(typeof(MeshFilter))]
+    public partial class FovMeshBuilder2 : MonoBehaviour
     {
-        const int ORIGIN_HEIGHT = 32;
-        const int RAY_DISTANCE = 64;
-        
-        const int TERRAIN_LAYER = 1 << 8;
-        const float GROUND_OFFSET = 0.5f;
-        
-        public const float Thickness = 0.2f;
+#region Raycast Constant
+        private const int ORIGIN_HEIGHT   = 32;
+        private const int RAY_DISTANCE    = 64;
+        private const int TERRAIN_LAYER   = 1 << 8;
+        private const float GROUND_OFFSET = 0.5f;
+#endregion Raycast Constant
+        private const float THICKNESS = 0.2f;
 
-        [SerializeField] private float Range;
-        [SerializeField] private float WidthLength;
+        public float Range;
+        public float WidthLength;
         
-        [SerializeField] private float OuterSideAngleRadian;
-        [SerializeField] private float InnerSideAngleRadian;
+        public float OuterSideAngleRadian;
+        public float InnerSideAngleRadian;
         
         public MeshFilter MeshFilter;
         private FovMeshInfos meshInfos;
@@ -44,10 +43,10 @@ namespace FieldOfView
     //╓────────────────────────────────────────────────────────────────────────────────────────────────────────────────╖
     //║ ◈◈◈◈◈◈ Accessors ◈◈◈◈◈◈                                                                                        ║
     //╙────────────────────────────────────────────────────────────────────────────────────────────────────────────────╜
-
         public float3 Position => transform.position;
         public float3 Forward => transform.forward;
-    
+
+#region BORDER Accessors
         //┌────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
         //│  ◇◇◇◇◇◇ BORDER ◇◇◇◇◇◇                                                                                      │
         //└────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -56,12 +55,14 @@ namespace FieldOfView
         
         // Start Positions
         public float2 OuterBorderStart => new (-WidthLength / 2, 0); 
-        public float2 InnerBorderStart => OuterBorderStart + new float2(BorderDirection.y, -BorderDirection.x) * Thickness;
+        public float2 InnerBorderStart => OuterBorderStart + new float2(BorderDirection.y, -BorderDirection.x) * THICKNESS;
         
         // Steps
         public float BorderOuterStep => Range / meshInfos.BorderQuadCount;
-        public float BorderInnerStep => math.distance(InnerBorderStart, InnerBorderStart + BorderDirection * (Range - Thickness)) / meshInfos.BorderQuadCount;
+        public float BorderInnerStep => math.distance(InnerBorderStart, InnerBorderStart + BorderDirection * (Range - THICKNESS)) / meshInfos.BorderQuadCount;
+#endregion BORDER Accessors
         
+#region ARC Accessors
         //┌────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
         //│  ◇◇◇◇◇◇ ARC ◇◇◇◇◇◇                                                                                         │
         //└────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -72,17 +73,20 @@ namespace FieldOfView
         // Steps
         public float OuterArcAngleStep => (math.PIHALF - OuterSideAngleRadian) / meshInfos.ArcQuadCount;
         public float InnerArcAngleStep => (math.PIHALF - InnerSideAngleRadian) / meshInfos.ArcQuadCount;
+#endregion ARC Accessors
         
+#region Front Accessors
         //┌────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
         //│  ◇◇◇◇◇◇ FRONT ◇◇◇◇◇◇                                                                                       │
         //└────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
         // Start Positions
         public float2 OuterFrontStart => OuterBorderStart + new float2(0,Range);
-        public float2 InnerFrontStart => OuterFrontStart + new float2(0,-Thickness);
+        public float2 InnerFrontStart => OuterFrontStart + new float2(0,-THICKNESS);
         
         // Steps
         public float2 FrontStep => new float2(WidthLength / meshInfos.FrontLineQuadCount, 0);
-        
+#endregion Front Accessors
+
         private void Awake()
         {
             MeshFilter = GetComponent<MeshFilter>();
@@ -99,7 +103,7 @@ namespace FieldOfView
             this.OuterSideAngleRadian = sideAngleRadian;
             this.WidthLength = widthLength;
             
-            float2 borderInnerEnd = InnerBorderStart + BorderDirection * (range - Thickness);
+            float2 borderInnerEnd = InnerBorderStart + BorderDirection * (range - THICKNESS);
             float2 borderOuterStartToInnerEnd = math.normalize(borderInnerEnd - OuterBorderStart);
             InnerSideAngleRadian = math.PI - math.atan2(borderOuterStartToInnerEnd.y, borderOuterStartToInnerEnd.x);
             
@@ -114,7 +118,6 @@ namespace FieldOfView
             fovMesh.Clear();
 
             meshVertices = new NativeArray<float3>(meshInfos.VerticesCount, Persistent, UninitializedMemory);
-            //meshVertices = new float3[meshInfos.VerticesCount];
             BuildVertices(meshVertices);
             
             NativeArray<ushort> triangleIndices = new (meshInfos.TriangleIndicesCount, Temp, UninitializedMemory);
@@ -191,28 +194,6 @@ namespace FieldOfView
                 heights[i] = hit.point.y + GROUND_OFFSET;
                 //vertices[i] = new float3(vertices[i].x, hit.point.y + groundOffset, vertices[i].z);
             }
-            
-            /*
-            float3 transformForward = transform.forward;
-            float3 transformPosition = transform.position;
-            for (int i = 0; i < vertices.Length; i++)
-            {
-                float2 origin2D = vertices[i].xz + transformPosition.xz;
-                float angle     = acos(transformForward.z);//acos(dot(forward().xz, transformForward.xz)); forward.xy = (0,1)
-                float signValue = sign(-transformForward.x);//sign(forward().x * transformForward.y - forward().y * transformForward.x);
-                float signedAngle = angle * signValue;
-                math.sincos(signedAngle, out float sinA, out float cosA);
-
-                //origin2D = float2(cosA * origin2D.x - sinA * origin2D.y, sinA * origin2D.x + cosA * origin2D.y);
-                float2x2 rotationMatrix = new float2x2(cosA, -sinA, sinA,  cosA);
-                origin2D = mul(rotationMatrix, origin2D);
-
-                Ray ray = new (new Vector3(origin2D.x, heightOffset, origin2D.y), Vector3.down);
-                if (!Physics.Raycast(ray, out RaycastHit hit, maxDistance, 1 << terrainLayerIndex)) continue;
-                vertices[i] = new float3(vertices[i].x, hit.point.y + groundOffset, vertices[i].z);
-                //vertices[i].y = hit.point.y + groundOffset;
-            }
-            */
         }
         
         public void SetBorderVertices(NativeArray<float3> vertices)
@@ -254,6 +235,7 @@ namespace FieldOfView
         {
             int startIndex = meshInfos.BorderVertexCount;
             int halfVertices = meshInfos.ArcVertexCount / 2;
+            float innerRange = Range - THICKNESS;
             for (int i = 0; i < halfVertices; i++)
             {
                 //Left Outer
@@ -265,7 +247,7 @@ namespace FieldOfView
                 //Left Inner
                 float innerAngleInRadian = InnerArcStart - (i + 1) * InnerArcAngleStep;
                 float2 innerDirection = new(math.cos(innerAngleInRadian), math.sin(innerAngleInRadian));
-                float3 innerLeft = (OuterBorderStart + innerDirection * (Range - Thickness)).x0y();
+                float3 innerLeft = (OuterBorderStart + innerDirection * innerRange).x0y();
                 vertices[startIndex + i * 2 + 1] = innerLeft;
                 
                 //Right Outer
@@ -277,7 +259,8 @@ namespace FieldOfView
                 vertices[outerRightIndex] = outerLeft - 2 * math.project(outerLeft, math.right());
             }
         }
-        
+
+#region Raycast JobSystem
         public JobHandle RaycastHitsJob(NativeArray<RaycastHit> results, NativeArray<float3> positions, QueryParameters queryParams, JobHandle dependency = default)
         {
             NativeArray<RaycastCommand> commands = new (positions.Length, TempJob, UninitializedMemory);
@@ -332,10 +315,32 @@ namespace FieldOfView
                 Commands[index] = new RaycastCommand(origin3D, Vector3.down, QueryParams, RayDistance);
             }
         }
+#endregion Raycast JobSystem
     }
     
+    /*
+    float3 transformForward = transform.forward;
+    float3 transformPosition = transform.position;
+    for (int i = 0; i < vertices.Length; i++)
+    {
+        float2 origin2D = vertices[i].xz + transformPosition.xz;
+        float angle     = acos(transformForward.z);//acos(dot(forward().xz, transformForward.xz)); forward.xy = (0,1)
+        float signValue = sign(-transformForward.x);//sign(forward().x * transformForward.y - forward().y * transformForward.x);
+        float signedAngle = angle * signValue;
+        math.sincos(signedAngle, out float sinA, out float cosA);
+
+        //origin2D = float2(cosA * origin2D.x - sinA * origin2D.y, sinA * origin2D.x + cosA * origin2D.y);
+        float2x2 rotationMatrix = new float2x2(cosA, -sinA, sinA,  cosA);
+        origin2D = mul(rotationMatrix, origin2D);
+
+        Ray ray = new (new Vector3(origin2D.x, heightOffset, origin2D.y), Vector3.down);
+        if (!Physics.Raycast(ray, out RaycastHit hit, maxDistance, 1 << terrainLayerIndex)) continue;
+        vertices[i] = new float3(vertices[i].x, hit.point.y + groundOffset, vertices[i].z);
+        //vertices[i].y = hit.point.y + groundOffset;
+    }
+    */
 #if UNITY_EDITOR
-    public partial class FovMeshBuilder : MonoBehaviour
+    public partial class FovMeshBuilder2 : MonoBehaviour
     {
         public bool DebugIndicesNumber = false;
         

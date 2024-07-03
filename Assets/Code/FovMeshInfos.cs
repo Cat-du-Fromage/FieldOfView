@@ -25,7 +25,7 @@ namespace FieldOfView
         public int FrontTrianglesIndicesCount  => FrontTrianglesCount * 3;
         public int TriangleIndicesCount        => TrianglesCount * 3;
         
-        public IndexFormat IndexFormat => VerticesCount * 2 < 65536 ? IndexFormat.UInt16 : IndexFormat.UInt32;
+        public IndexFormat IndexFormat => VerticesCount < 65535 ? IndexFormat.UInt16 : IndexFormat.UInt32;
 	
         public FovMeshInfos(float range, float sideAngleRadian, float widthLength, int resolution = 1)
         {

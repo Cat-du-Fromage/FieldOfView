@@ -1,65 +1,63 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using Unity.Collections;
-using Unity.Mathematics;
 using UnityEngine;
+using Unity.Mathematics;
 
 namespace FieldOfView
 {
-
     public partial class FieldOfViewController : MonoBehaviour
     {
         [SerializeField] private GameObject FieldOfViewPrefab;
         
+        [SerializeField, Range(1,4)] private int ResolutionMesh = 1;  
+        
         [SerializeField] private float Range;
         [SerializeField] private float SideAngleDegrees;
-        
-        // Formation Data
-        [SerializeField, Min(1)] private int FormationWidth = 6;
-        [SerializeField, Min(0)] private float SpaceBetweenUnits = 0f;
-        [SerializeField, Min(1)] private Vector2 UnitSize = Vector2.one;
-
-        [field:SerializeField] public FieldOfViewComponent FieldOfView { get; private set; }
-
-        private Vector2 DistanceUnitToUnit => UnitSize + new Vector2(SpaceBetweenUnits, SpaceBetweenUnits);
-        private float WidthLength => (FormationWidth - 1) * (UnitSize.x + SpaceBetweenUnits);
+        // Row Size
+        [SerializeField] private int FormationWidth = 6;
+        [SerializeField] private float SpaceBetweenUnits = 0f;
+        [SerializeField] private float UnitSize = 1f;
+        private float DistanceUnitToUnit => UnitSize + SpaceBetweenUnits;
+        private float WidthLength => (FormationWidth - 1) * DistanceUnitToUnit;
+#region Initialization
+        [field:SerializeField] public FieldOfViewComponent2 FieldOfView { get; private set; }
         
         private void Awake()
         {
-            FieldOfView = Instantiate(FieldOfViewPrefab, transform).GetComponent<FieldOfViewComponent>();
+            FieldOfView = Instantiate(FieldOfViewPrefab, transform).GetComponent<FieldOfViewComponent2>();
             FieldOfView.transform.localPosition += Vector3.down;
         }
 
         private void Start()
         {
-            FieldOfView.Initialize(Range, SideAngleDegrees * math.TORADIANS, WidthLength, ResolutionMesh);
+            FieldOfView.Initialize(Range, math.radians(SideAngleDegrees), WidthLength, ResolutionMesh);
         }
+#endregion
     }
-
     
 #if UNITY_EDITOR
     public partial class FieldOfViewController : MonoBehaviour
     {
-        [SerializeField, Range(1,4)] private int ResolutionMesh = 1;
+        private void DrawGhostUnits(Color baseColor, Color borderColor)
+        {
+            const float radius = 0.5f;
+
+            float midWidth        = WidthLength / 2;
+            Vector3 startPosition = transform.position - midWidth * transform.right;
+            Vector3 baseOffset    = transform.right * DistanceUnitToUnit;
+            
+            for (int i = 0; i < FormationWidth; i++)
+            {
+                bool isBorderUnit = i == 0 || i == FormationWidth - 1;
+                Gizmos.color = isBorderUnit ? borderColor : baseColor;
+                
+                Vector3 position = startPosition + baseOffset * i;
+                Gizmos.DrawWireSphere(position, radius);
+            }
+        }
         
         public void OnDrawGizmos()
         {
             if (FormationWidth < 2) return;
-            DrawGhostUnits(Color.green,Color.white);
-        }
-        
-        private void DrawGhostUnits(Color sideUnits, Color betweenUnits)
-        {
-            Vector3 startPosition = transform.position - WidthLength / 2 * transform.right;
-            for (int i = 0; i < FormationWidth; i++)
-            {
-                bool isBorderUnit = i == 0 || i == FormationWidth - 1;
-                Gizmos.color = isBorderUnit ? sideUnits : betweenUnits;
-                
-                Vector3 unitPosition = startPosition + transform.right * i * DistanceUnitToUnit.x;
-                Gizmos.DrawWireSphere(unitPosition, 0.5f);
-            }
+            DrawGhostUnits(Color.white, Color.green);
         }
     }
 #endif
