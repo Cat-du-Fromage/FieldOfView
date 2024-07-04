@@ -8,7 +8,27 @@ namespace FieldOfView
 {
     public struct MeshInfos
     {
+        //BORDER Infos
+        public int BorderQuadCount;
+        public int BorderVertexCount => (BorderQuadCount + 1) * 2;
+        public int BorderTrianglesCount => BorderQuadCount * 2;
+        public int BorderTrianglesIndicesCount => BorderTrianglesCount * 3;
         
+        //Steps
+        public float BorderOuterStep;
+        public float BorderInnerStep;
+        
+        public MeshInfos(float range, float sideAngleRadian, float widthLength, float thickness)
+        {
+            BorderQuadCount = (int)math.round(range);
+
+            BorderOuterStep = range / BorderQuadCount;
+            float2 borderDirection  = new (math.cos(math.PI - sideAngleRadian), math.sin(math.PI - sideAngleRadian));
+            float2 outerBorderStart = new (-widthLength / 2, 0); 
+            float2 innerBorderStart = outerBorderStart + new float2(borderDirection.y, -borderDirection.x) * thickness;
+            float2 innerBorderEnd = innerBorderStart + borderDirection * (range - thickness);
+            BorderInnerStep = math.distance(innerBorderStart, innerBorderEnd) / BorderQuadCount;
+        }
     }
     
     [RequireComponent(typeof(FieldOfViewComponent), typeof(MeshFilter))]
