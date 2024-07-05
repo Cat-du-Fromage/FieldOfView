@@ -59,8 +59,19 @@ namespace FieldOfView
         
         // Steps
         public float BorderOuterStep => Range / meshInfos.BorderQuadCount;
-        public float BorderInnerStep => math.distance(InnerBorderStart, InnerBorderStart + BorderDirection * (Range - THICKNESS)) / meshInfos.BorderQuadCount;
-#endregion BORDER Accessors
+        //public float BorderInnerStep => math.distance(InnerBorderStart, InnerBorderStart + BorderDirection * (Range - THICKNESS)) / meshInfos.BorderQuadCount;
+        
+        public float BorderInnerStep
+        {
+            get
+            {
+                float2 borderDirection = float2(cos(OuterSideAngleRadian), sin(OuterSideAngleRadian));
+                float2 innerStart = float2(WidthLength / 2, 0) + float2(-borderDirection.y, borderDirection.x) * THICKNESS;
+                return distance(innerStart, innerStart + borderDirection * (Range - THICKNESS)) / meshInfos.BorderQuadCount;
+            }
+        }
+
+        #endregion BORDER Accessors
         
 #region ARC Accessors
         //┌────────────────────────────────────────────────────────────────────────────────────────────────────────────┐

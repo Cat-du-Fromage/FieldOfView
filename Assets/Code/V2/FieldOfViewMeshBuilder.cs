@@ -23,11 +23,16 @@ namespace FieldOfView
             BorderQuadCount = (int)math.round(range);
 
             BorderOuterStep = range / BorderQuadCount;
-            float2 borderDirection  = new (math.cos(math.PI - sideAngleRadian), math.sin(math.PI - sideAngleRadian));
-            float2 outerBorderStart = new (-widthLength / 2, 0); 
-            float2 innerBorderStart = outerBorderStart + new float2(borderDirection.y, -borderDirection.x) * thickness;
-            float2 innerBorderEnd = innerBorderStart + borderDirection * (range - thickness);
-            BorderInnerStep = math.distance(innerBorderStart, innerBorderEnd) / BorderQuadCount;
+            //float2 borderDirection  = new (math.cos(math.PI - sideAngleRadian), math.sin(math.PI - sideAngleRadian));
+            //float2 outerBorderStart = new (-widthLength / 2, 0); 
+            //float2 innerBorderStart = outerBorderStart + new float2(borderDirection.y, -borderDirection.x) * thickness;
+            //float2 innerBorderEnd = innerBorderStart + borderDirection * (range - thickness);
+            
+            float2 borderDirection = new float2(math.cos(sideAngleRadian), math.sin(sideAngleRadian));
+            float2 outerBorderStart = new float2(widthLength / 2, 0);
+            float2 innerStart = outerBorderStart + new float2(-borderDirection.y, borderDirection.x) * thickness;
+            float2 innerBorderEnd = innerStart + borderDirection * (range - thickness);
+            BorderInnerStep = math.distance(innerStart, innerBorderEnd) / BorderQuadCount;
         }
     }
     
@@ -39,8 +44,8 @@ namespace FieldOfView
         private MeshFilter meshFilter;
         private FieldOfViewComponent fieldOfViewComponent;
         
-        public float Range                => fieldOfViewComponent.Range;
-        public float WidthLength          => fieldOfViewComponent.WidthLength;
+        public float Range => fieldOfViewComponent.Range;
+        public float WidthLength => fieldOfViewComponent.WidthLength;
         public float OuterSideAngleRadian => fieldOfViewComponent.SideAngleRadian;
         
         public FieldOfViewMeshBuilder Initialize()

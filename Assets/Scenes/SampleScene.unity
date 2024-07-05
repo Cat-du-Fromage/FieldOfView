@@ -354,7 +354,7 @@ MonoBehaviour:
   ResolutionMesh: 1
   Range: 8
   SideAngleDegrees: 60
-  FormationWidth: 7
+  FormationWidth: 12
   SpaceBetweenUnits: 0
   UnitSize: 1
   <FieldOfView>k__BackingField: {fileID: 0}
