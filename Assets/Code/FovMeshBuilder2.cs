@@ -59,8 +59,9 @@ namespace FieldOfView
         
         // Steps
         public float BorderOuterStep => Range / meshInfos.BorderQuadCount;
+        public float BorderInnerStep => (Range - THICKNESS) / meshInfos.BorderQuadCount;
         //public float BorderInnerStep => math.distance(InnerBorderStart, InnerBorderStart + BorderDirection * (Range - THICKNESS)) / meshInfos.BorderQuadCount;
-        
+        /*
         public float BorderInnerStep
         {
             get
@@ -70,7 +71,7 @@ namespace FieldOfView
                 return distance(innerStart, innerStart + borderDirection * (Range - THICKNESS)) / meshInfos.BorderQuadCount;
             }
         }
-
+        */
         #endregion BORDER Accessors
         
 #region ARC Accessors
